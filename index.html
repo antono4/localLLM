@@ -649,15 +649,17 @@
             const apiKey = localStorage.getItem('openhands_api_key');
             
             try {
-                // Try OpenHands Cloud API
-                const response = await fetch('https://app.all-hands.dev/api/v1/conversations', {
+                // Try OpenHands Cloud Agent Server API
+                // Using the correct API endpoint for chat
+                const response = await fetch('https://app.all-hands.dev/api/chat', {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${apiKey}`,
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        model: 'claude-sonnet-4-20250514'
+                        message: message,
+                        stream: false
                     })
                 });
 
@@ -666,30 +668,7 @@
                 }
 
                 const data = await response.json();
-                
-                // If we got a conversation ID, send message
-                if (data.id) {
-                    // Send message to conversation
-                    const msgResponse = await fetch(`https://app.all-hands.dev/api/v1/conversations/${data.id}/messages`, {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${apiKey}`,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            content: message
-                        })
-                    });
-                    
-                    if (!msgResponse.ok) {
-                        throw new Error('Failed to send message');
-                    }
-                    
-                    const msgData = await msgResponse.json();
-                    return msgData.response || msgData.content || 'Response received';
-                }
-
-                throw new Error('No conversation ID returned');
+                return data.response || data.message || data.content || 'Response received';
                 
             } catch (error) {
                 throw new Error(error.message);
