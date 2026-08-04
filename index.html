@@ -394,8 +394,6 @@
             border-color: var(--primary);
         }
     </style>
-    <!-- OpenAI SDK -->
-    <script src="https://cdn.jsdelivr.net/npm/openai@4.28.0/dist/openai.min.js"></script>
 </head>
 <body>
     <!-- Header -->
@@ -647,24 +645,35 @@
             messageInput.focus();
         }
 
-        // Call OpenAI API using SDK
+        // Call OpenAI API using fetch with CORS proxy
         async function callOpenHandsAPI(message) {
             const apiKey = localStorage.getItem('openhands_api_key');
             
             try {
-                // Using OpenAI SDK
-                const client = new OpenAI({ apiKey: apiKey, dangerouslyAllowBrowser: true });
-                
-                const response = await client.chat.completions.create({
-                    model: 'gpt-3.5-turbo',
-                    messages: [
-                        ...messageHistory.map(m => ({ role: m.role, content: m.content })),
-                        { role: 'user', content: message }
-                    ],
-                    max_tokens: 1000
+                // Using AllOrigins CORS proxy
+                const response = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent('https://api.openai.com/v1/chat/completions'), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: 'gpt-3.5-turbo',
+                        messages: [
+                            ...messageHistory.map(m => ({ role: m.role, content: m.content })),
+                            { role: 'user', content: message }
+                        ],
+                        max_tokens: 1000
+                    })
                 });
 
-                return response.choices[0]?.message?.content || 'No response';
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error?.message || 'API error: ' + response.status);
+                }
+
+                const data = await response.json();
+                return data.choices[0]?.message?.content || 'No response';
                 
             } catch (error) {
                 throw new Error(error.message || 'Failed to connect to OpenAI');
