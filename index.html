@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🤖 AI Task Assistant - Local LLM</title>
+    <title>🤖 AI Chat Assistant - Interactive</title>
     <style>
         :root {
             --primary: #6366f1;
@@ -11,11 +11,14 @@
             --secondary: #10b981;
             --bg-dark: #0f172a;
             --bg-card: #1e293b;
+            --bg-input: #334155;
             --text-primary: #f1f5f9;
             --text-secondary: #94a3b8;
             --border: #334155;
             --danger: #ef4444;
             --warning: #f59e0b;
+            --user-bg: #4f46e5;
+            --ai-bg: #1e293b;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -24,77 +27,75 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: var(--bg-dark);
             color: var(--text-primary);
-            min-height: 100vh;
-            line-height: 1.6;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
 
-        .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
-
-        header {
-            text-align: center;
-            padding: 3rem 0;
+        /* Header */
+        .header {
+            background: var(--bg-card);
             border-bottom: 1px solid var(--border);
-            margin-bottom: 2rem;
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
         }
 
-        header h1 {
-            font-size: 2.5rem;
-            margin-bottom: 0.5rem;
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
             background: linear-gradient(135deg, var(--primary), var(--secondary));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            background-clip: text;
         }
 
-        header p { color: var(--text-secondary); font-size: 1.1rem; }
-
-        .api-key-section {
-            background: var(--bg-card);
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin-bottom: 2rem;
-            border: 1px solid var(--border);
-        }
-
-        .api-key-section h2 {
-            font-size: 1.2rem;
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .mode-badge {
-            display: inline-block;
+        .status-badge {
             padding: 0.25rem 0.75rem;
             border-radius: 9999px;
             font-size: 0.75rem;
             font-weight: 600;
-            margin-left: 0.5rem;
             background: rgba(245, 158, 11, 0.2);
             color: var(--warning);
         }
 
-        .api-key-form { display: flex; gap: 1rem; flex-wrap: wrap; }
+        .status-badge.connected {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--secondary);
+        }
 
-        .api-key-form input {
-            flex: 1;
-            min-width: 300px;
-            padding: 0.75rem 1rem;
+        .api-input {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .api-input input {
+            padding: 0.5rem 1rem;
             border: 1px solid var(--border);
             border-radius: 8px;
             background: var(--bg-dark);
             color: var(--text-primary);
-            font-size: 1rem;
+            font-size: 0.9rem;
+            width: 300px;
         }
 
-        .api-key-form input:focus { outline: none; border-color: var(--primary); }
+        .api-input input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
 
         .btn {
-            padding: 0.75rem 1.5rem;
+            padding: 0.5rem 1rem;
             border: none;
             border-radius: 8px;
-            font-size: 1rem;
+            font-size: 0.9rem;
             cursor: pointer;
             transition: all 0.3s ease;
             font-weight: 500;
@@ -105,534 +106,822 @@
         .btn-secondary { background: var(--secondary); color: white; }
         .btn-secondary:hover { background: #059669; }
         .btn-demo { background: var(--warning); color: white; }
-        .btn-demo:hover { background: #d97706; }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        .status { padding: 0.75rem 1rem; border-radius: 8px; margin-top: 1rem; display: none; }
-        .status.success { background: rgba(16, 185, 129, 0.2); color: var(--secondary); display: block; }
-        .status.error { background: rgba(239, 68, 68, 0.2); color: var(--danger); display: block; }
-        .status.info { background: rgba(99, 102, 241, 0.2); color: var(--primary); display: block; }
+        /* Chat Container */
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+            padding: 1rem 2rem;
+            overflow: hidden;
+        }
 
+        /* Chat Messages */
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem 0;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .message {
+            display: flex;
+            gap: 1rem;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+
+        .message.ai .message-avatar {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+        }
+
+        .message.user .message-avatar {
+            background: var(--user-bg);
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 1rem;
+            border-radius: 12px;
+            line-height: 1.6;
+        }
+
+        .message.ai .message-content {
+            background: var(--ai-bg);
+            border: 1px solid var(--border);
+            border-top-left-radius: 4px;
+        }
+
+        .message.user .message-content {
+            background: var(--user-bg);
+            border-top-right-radius: 4px;
+        }
+
+        .message-content pre {
+            background: var(--bg-dark);
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 0.5rem 0;
+            font-size: 0.85rem;
+        }
+
+        .message-content code {
+            background: var(--bg-dark);
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+
+        .message-content p {
+            margin-bottom: 0.5rem;
+        }
+
+        .message-content p:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Typing Indicator */
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 1rem;
+        }
+
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            background: var(--text-secondary);
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out;
+        }
+
+        .typing-indicator span:nth-child(1) { animation-delay: 0s; }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Quick Actions */
+        .quick-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            padding: 0.5rem 0;
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 1rem;
+        }
+
+        .quick-action {
+            padding: 0.4rem 0.8rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: var(--text-secondary);
+        }
+
+        .quick-action:hover {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* Input Area */
+        .input-area {
+            display: flex;
+            gap: 1rem;
+            align-items: flex-end;
+            padding-top: 1rem;
+        }
+
+        .input-wrapper {
+            flex: 1;
+            position: relative;
+        }
+
+        .input-wrapper textarea {
+            width: 100%;
+            padding: 1rem;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: var(--bg-card);
+            color: var(--text-primary);
+            font-size: 1rem;
+            resize: none;
+            min-height: 50px;
+            max-height: 150px;
+            font-family: inherit;
+            line-height: 1.5;
+        }
+
+        .input-wrapper textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .input-wrapper textarea::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .send-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: var(--primary);
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .send-btn:hover {
+            background: var(--primary-dark);
+            transform: scale(1.05);
+        }
+
+        .send-btn:disabled {
+            background: var(--border);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Info Box */
         .info-box {
             background: rgba(99, 102, 241, 0.1);
             border: 1px solid var(--primary);
             border-radius: 8px;
-            padding: 1rem;
-            margin-top: 1rem;
-            font-size: 0.9rem;
-        }
-
-        .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
-        @media (max-width: 768px) { .main-grid { grid-template-columns: 1fr; } }
-
-        .task-section, .output-section {
-            background: var(--bg-card);
-            border-radius: 12px;
-            padding: 1.5rem;
-            border: 1px solid var(--border);
-        }
-
-        .task-section h2, .output-section h2 { font-size: 1.2rem; margin-bottom: 1rem; }
-        .output-section h2 { display: flex; justify-content: space-between; align-items: center; }
-
-        .preset-tasks { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; margin-bottom: 1.5rem; }
-
-        .preset-task {
-            background: var(--bg-dark);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 1rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-align: center;
-        }
-
-        .preset-task:hover { border-color: var(--primary); transform: translateY(-2px); }
-        .preset-task .icon { font-size: 1.5rem; margin-bottom: 0.5rem; }
-        .preset-task .name { font-weight: 600; margin-bottom: 0.25rem; }
-        .preset-task .desc { font-size: 0.8rem; color: var(--text-secondary); }
-
-        .custom-task { margin-top: 1rem; }
-
-        .custom-task textarea {
-            width: 100%;
-            padding: 1rem;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            background: var(--bg-dark);
-            color: var(--text-primary);
-            font-size: 1rem;
-            resize: vertical;
-            min-height: 120px;
-            font-family: inherit;
-        }
-
-        .custom-task textarea:focus { outline: none; border-color: var(--primary); }
-        .custom-task .btn { margin-top: 1rem; width: 100%; }
-
-        .output-content {
-            background: var(--bg-dark);
-            border-radius: 8px;
-            padding: 1rem;
-            min-height: 300px;
-            max-height: 500px;
-            overflow-y: auto;
-            font-family: 'Consolas', 'Monaco', monospace;
-            font-size: 0.9rem;
-            white-space: pre-wrap;
-            border: 1px solid var(--border);
-        }
-
-        .output-content .info { color: var(--primary); }
-        .output-content .success { color: var(--secondary); }
-        .output-content .error { color: var(--danger); }
-        .output-content .warning { color: var(--warning); }
-        .output-content .system { color: var(--text-secondary); font-style: italic; }
-
-        .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 2rem; }
-        @media (max-width: 768px) { .features { grid-template-columns: 1fr; } }
-
-        .feature-card {
-            background: var(--bg-card);
-            border-radius: 12px;
-            padding: 1.5rem;
-            text-align: center;
-            border: 1px solid var(--border);
-        }
-
-        .feature-card .icon { font-size: 2rem; margin-bottom: 0.5rem; }
-        .feature-card h3 { margin-bottom: 0.5rem; }
-        .feature-card p { color: var(--text-secondary); font-size: 0.9rem; }
-
-        footer {
-            text-align: center;
-            padding: 2rem;
-            margin-top: 3rem;
-            border-top: 1px solid var(--border);
+            padding: 0.75rem 1rem;
+            margin-bottom: 1rem;
+            font-size: 0.85rem;
             color: var(--text-secondary);
         }
 
-        footer a { color: var(--primary); text-decoration: none; }
-        footer a:hover { text-decoration: underline; }
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                padding: 1rem;
+            }
 
-        .toast {
-            position: fixed;
-            bottom: 2rem;
-            right: 2rem;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 1rem 1.5rem;
-            display: none;
-            animation: slideIn 0.3s ease;
-            z-index: 1000;
+            .api-input {
+                width: 100%;
+            }
+
+            .api-input input {
+                flex: 1;
+                width: auto;
+            }
+
+            .chat-container {
+                padding: 1rem;
+            }
+
+            .message-content {
+                max-width: 85%;
+            }
         }
 
-        .toast.show { display: block; }
+        /* Welcome Message */
+        .welcome {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-secondary);
+        }
 
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
+        .welcome h2 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .welcome p {
+            margin-bottom: 1.5rem;
+        }
+
+        .welcome-suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: center;
+        }
+
+        .suggestion {
+            padding: 0.5rem 1rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .suggestion:hover {
+            background: var(--primary);
+            border-color: var(--primary);
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>🤖 AI Task Assistant</h1>
-            <p>Automasi Tugas dengan OpenHands Cloud - Local LLM Edition</p>
-        </header>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <h1>🤖 AI Chat Assistant</h1>
+            <span id="statusBadge" class="status-badge">DEMO MODE</span>
+        </div>
+        <div class="api-input">
+            <input type="password" id="apiKey" placeholder="OpenHands API Key (sk-oh-...)" />
+            <button class="btn btn-secondary" onclick="testConnection()">Connect</button>
+            <button class="btn btn-demo" onclick="runDemo()">🎮 Demo</button>
+        </div>
+    </header>
 
-        <section class="api-key-section">
-            <h2>
-                🔑 Konfigurasi
-                <span id="modeBadge" class="mode-badge">DEMO MODE</span>
-            </h2>
-            <div class="api-key-form">
-                <input type="password" id="apiKey" placeholder="Masukkan OpenHands Cloud API Key (sk-oh-...)" />
-                <button class="btn btn-primary" onclick="saveApiKey()">Simpan</button>
-                <button class="btn btn-secondary" onclick="testConnection()">Test API</button>
-                <button class="btn btn-demo" onclick="runDemoMode()">🎮 Demo Mode</button>
-            </div>
-            <div id="status" class="status"></div>
-            <div class="info-box">
-                <h4>💡 Cara Pakai:</h4>
-                <p>
-                    1. Klik <strong>"🎮 Demo Mode"</strong> untuk test langsung<br>
-                    2. Pilih preset task atau tulis tugas kustom<br>
-                    3. Lihat output simulasi di panel kanan<br>
-                    4. Untuk API live, gunakan OpenHands SDK di Python
-                </p>
-                <p style="margin-top: 0.5rem; color: var(--text-secondary);">
-                    <strong>Catatan:</strong> Demo ini menampilkan output simulasi.
-                </p>
-            </div>
-        </section>
-
-        <div class="main-grid">
-            <section class="task-section">
-                <h2>📝 Pilih Tugas</h2>
-                
-                <div class="preset-tasks">
-                    <div class="preset-task" onclick="runPresetTask('hello')">
-                        <div class="icon">👋</div>
-                        <div class="name">Hello</div>
-                        <div class="desc">File sapaan sederhana</div>
-                    </div>
-                    <div class="preset-task" onclick="runPresetTask('readme')">
-                        <div class="icon">📄</div>
-                        <div class="name">README</div>
-                        <div class="desc">Generate README.md</div>
-                    </div>
-                    <div class="preset-task" onclick="runPresetTask('backup')">
-                        <div class="icon">💾</div>
-                        <div class="name">Backup</div>
-                        <div class="desc">Backup file Python</div>
-                    </div>
-                    <div class="preset-task" onclick="runPresetTask('analyze')">
-                        <div class="icon">🔍</div>
-                        <div class="name">Analyze</div>
-                        <div class="desc">Analisis struktur code</div>
-                    </div>
-                    <div class="preset-task" onclick="runPresetTask('clean')">
-                        <div class="icon">🧹</div>
-                        <div class="name">Clean</div>
-                        <div class="desc">Hapus file temporary</div>
-                    </div>
-                    <div class="preset-task" onclick="runPresetTask('test')">
-                        <div class="icon">🧪</div>
-                        <div class="name">Test</div>
-                        <div class="desc">Generate unit tests</div>
-                    </div>
-                    <div class="preset-task" onclick="runPresetTask('docs')">
-                        <div class="icon">📚</div>
-                        <div class="name">Docs</div>
-                        <div class="desc">Generate dokumentasi</div>
-                    </div>
-                    <div class="preset-task" onclick="runPresetTask('security')">
-                        <div class="icon">🔒</div>
-                        <div class="name">Security</div>
-                        <div class="desc">Security scan</div>
-                    </div>
-                </div>
-
-                <div class="custom-task">
-                    <h3>✨ Tugas Kustom</h3>
-                    <textarea id="customTask" placeholder="Tulis tugas kustom di sini...
-Contoh: Buat program CLI untuk manage todo list"></textarea>
-                    <button class="btn btn-primary" onclick="runCustomTask()">Jalankan Tugas Kustom</button>
-                </div>
-            </section>
-
-            <section class="output-section">
-                <h2>
-                    📊 Output
-                    <button class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.8rem;" onclick="clearOutput()">Clear</button>
-                </h2>
-                <div id="output" class="output-content">
-                    <span class="system">💡 Siap menerima tugas...
-
-Klik "🎮 Demo Mode" untuk memulai!</span>
-                </div>
-            </section>
+    <!-- Chat Container -->
+    <div class="chat-container">
+        <!-- Info Box -->
+        <div class="info-box" id="infoBox">
+            💡 <strong>Selamat datang!</strong> Masukkan API Key OpenHands Cloud atau klik "Demo" untuk test.
+            Aplikasi ini menggunakan AI untuk membantu Anda dengan berbagai tugas.
         </div>
 
-        <section class="features">
-            <div class="feature-card">
-                <div class="icon">⚡</div>
-                <h3>Cepat</h3>
-                <p>Eksekusi tugas dalam hitungan detik dengan AI</p>
-            </div>
-            <div class="feature-card">
-                <div class="icon">🔒</div>
-                <h3>Aman</h3>
-                <p>Berjalan di sandbox cloud yang aman</p>
-            </div>
-            <div class="feature-card">
-                <div class="icon">🎯</div>
-                <h3>Presisi</h3>
-                <p>Hasil akurat dengan LLM yang powerful</p>
-            </div>
-        </section>
+        <!-- Quick Actions -->
+        <div class="quick-actions" id="quickActions" style="display: none;">
+            <button class="quick-action" onclick="sendQuickAction('Buatkan Hello World program')">📝 Hello World</button>
+            <button class="quick-action" onclick="sendQuickAction('Buatkan README untuk project ini')">📄 README</button>
+            <button class="quick-action" onclick="sendQuickAction('Analisa kode Python saya')">🔍 Analisa</button>
+            <button class="quick-action" onclick="sendQuickAction('Buatkan unit test')">🧪 Unit Test</button>
+            <button class="quick-action" onclick="sendQuickAction('Scan security issues')">🔒 Security</button>
+        </div>
 
-        <footer>
-            <p>Made with ❤️ using <a href="https://app.all-hands.dev" target="_blank">OpenHands Cloud</a></p>
-            <p>Repository: <a href="https://github.com/antono4/localLLM" target="_blank">antono4/localLLM</a></p>
-        </footer>
+        <!-- Messages -->
+        <div class="chat-messages" id="chatMessages">
+            <!-- Welcome -->
+            <div class="welcome">
+                <h2>👋 Hai! Saya AI Assistant</h2>
+                <p>Tanyakan apa saja atau gunakan quick actions di bawah!</p>
+                <div class="welcome-suggestions">
+                    <span class="suggestion" onclick="sendMessage('Apa itu OpenHands?')">Apa itu OpenHands?</span>
+                    <span class="suggestion" onclick="sendMessage('Bantu saya buat aplikasi web')">Buat aplikasi web</span>
+                    <span class="suggestion" onclick="sendMessage('Jelaskan cara pakai API ini')">Cara pakai API</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="input-area">
+            <div class="input-wrapper">
+                <textarea 
+                    id="messageInput" 
+                    placeholder="Ketik pesan Anda di sini..."
+                    rows="1"
+                    onkeydown="handleKeyDown(event)"
+                    oninput="autoResize(this)"
+                ></textarea>
+            </div>
+            <button class="send-btn" id="sendBtn" onclick="sendMessage()">➤</button>
+        </div>
     </div>
 
-    <div id="toast" class="toast"></div>
-
     <script>
-        let isDemoMode = true;
+        // State
         let isConnected = false;
-        
-        const presetTasks = {
-            hello: 'Buat file hello.txt yang berisi "Hello from AI Task Assistant!" dan tanggal saat ini',
-            readme: 'Buat file README.md untuk project ini dengan format yang bagus',
-            backup: 'Buat backup semua file .py di folder saat ini ke folder backup/',
-            analyze: 'Analisis semua file .py dan buat laporan tentang struktur code',
-            clean: 'Hapus semua file temporary (.pyc, __pycache__)',
-            test: 'Buat unit test untuk semua function di file main.py',
-            docs: 'Tambahkan docstring ke semua function di file main.py',
-            security: 'Scan semua file .py untuk potensi security issues'
-        };
+        let messageHistory = [];
+        let isTyping = false;
 
+        // DOM Elements
+        const chatMessages = document.getElementById('chatMessages');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const statusBadge = document.getElementById('statusBadge');
+        const quickActions = document.getElementById('quickActions');
+        const infoBox = document.getElementById('infoBox');
+
+        // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             const savedKey = localStorage.getItem('openhands_api_key');
-            if (savedKey) document.getElementById('apiKey').value = savedKey;
+            if (savedKey) {
+                document.getElementById('apiKey').value = savedKey;
+            }
+            messageInput.focus();
         });
 
-        function updateModeBadge() {
-            const badge = document.getElementById('modeBadge');
-            badge.textContent = isConnected ? 'LIVE API' : 'DEMO MODE';
-            badge.style.background = isConnected ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)';
-            badge.style.color = isConnected ? '#10b981' : '#f59e0b';
+        // Auto resize textarea
+        function autoResize(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = Math.min(textarea.scrollHeight, 150) + 'px';
         }
 
-        function saveApiKey() {
-            const apiKey = document.getElementById('apiKey').value.trim();
-            if (apiKey) {
-                localStorage.setItem('openhands_api_key', apiKey);
-                showToast('✅ API Key disimpan!');
-                showStatus('success', 'API Key disimpan! Klik "Test API" untuk verifikasi.');
-            } else {
-                showStatus('error', 'Masukkan API Key terlebih dahulu!');
+        // Handle Enter key
+        function handleKeyDown(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
             }
         }
 
-        function getApiKey() {
-            return document.getElementById('apiKey').value.trim() || localStorage.getItem('openhands_api_key');
-        }
-
-        function showStatus(type, message) {
-            const status = document.getElementById('status');
-            status.className = `status ${type}`;
-            status.textContent = message;
-        }
-
-        function showToast(message) {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.className = 'toast show';
-            setTimeout(() => toast.className = 'toast', 3000);
-        }
-
-        function appendOutput(text, type = 'info') {
-            const output = document.getElementById('output');
-            const span = document.createElement('span');
-            span.className = type;
-            span.textContent = text + '\n';
-            output.appendChild(span);
-            output.scrollTop = output.scrollHeight;
-        }
-
-        function clearOutput() {
-            document.getElementById('output').innerHTML = '<span class="system">💡 Output cleared. Siap menerima tugas baru...</span>';
-        }
-
-        function runDemoMode() {
-            isDemoMode = true;
-            isConnected = false;
-            updateModeBadge();
-            showStatus('info', 'Demo Mode aktif - menampilkan output simulasi');
-            showToast('🎮 Demo Mode diaktifkan');
-            
-            appendOutput('\n═══════════════════════════════════════', 'info');
-            appendOutput('🎮 DEMO MODE - Contoh Output Simulasi', 'info');
-            appendOutput('═══════════════════════════════════════\n', 'info');
-            appendOutput('📋 Demo ini menampilkan output yang akan dihasilkan', 'info');
-            appendOutput('   ketika tugas dijalankan.\n', 'info');
-            appendOutput('⏳ Memulai simulasi...\n', 'warning');
-            
-            setTimeout(() => appendOutput('   ✓ Langkah 1: Validasi input', 'info'), 500);
-            setTimeout(() => appendOutput('   ✓ Langkah 2: Proses dengan AI', 'info'), 1000);
-            setTimeout(() => appendOutput('   ✓ Langkah 3: Generate output\n', 'info'), 1500);
-            setTimeout(() => {
-                appendOutput('✅ Demo selesai! Pilih tugas untuk melihat output.', 'success');
-                appendOutput('═══════════════════════════════════════', 'info');
-            }, 2000);
-        }
-
+        // Test Connection
         function testConnection() {
-            const apiKey = getApiKey();
+            const apiKey = document.getElementById('apiKey').value.trim();
+            
             if (!apiKey) {
-                showStatus('error', 'Masukkan API Key terlebih dahulu!');
+                showInfo('⚠️ Masukkan API Key terlebih dahulu!', 'warning');
                 return;
             }
 
-            appendOutput('\n🔄 Menguji koneksi...', 'info');
+            if (!apiKey.startsWith('sk-oh-')) {
+                showInfo('⚠️ API Key harus dimulai dengan "sk-oh-"', 'warning');
+                return;
+            }
+
+            localStorage.setItem('openhands_api_key', apiKey);
+            isConnected = true;
             
-            if (apiKey && apiKey.startsWith('sk-oh-')) {
-                isConnected = true;
-                isDemoMode = false;
-                updateModeBadge();
-                appendOutput('✅ Koneksi berhasil!', 'success');
-                appendOutput('📝 Mode: LIVE API', 'info');
-                showStatus('success', 'API Key valid! Mode LIVE aktif.');
-                showToast('🔗 API Connected!');
+            statusBadge.textContent = 'CONNECTED';
+            statusBadge.classList.add('connected');
+            quickActions.style.display = 'flex';
+            
+            showInfo('✅ Berhasil terhubung ke OpenHands Cloud!', 'success');
+            
+            // Add system message
+            addMessage('ai', '👋 Selamat datang! Saya siap membantu Anda.\n\nApa yang bisa saya bantu hari ini?');
+        }
+
+        // Run Demo
+        function runDemo() {
+            isConnected = false;
+            statusBadge.textContent = 'DEMO MODE';
+            statusBadge.classList.remove('connected');
+            quickActions.style.display = 'flex';
+            
+            showInfo('🎮 Demo Mode aktif - menggunakan AI simulasi', 'info');
+            
+            // Clear and add welcome
+            chatMessages.innerHTML = '';
+            addMessage('ai', '🎮 **Demo Mode Aktif!**\n\nSaya dalam mode demo. Ketik pesan dan saya akan merespons dengan simulasi.\n\nCoba tanyakan sesuatu!');
+        }
+
+        // Show Info Message
+        function showInfo(text, type = 'info') {
+            infoBox.innerHTML = text;
+            if (type === 'success') {
+                infoBox.style.borderColor = 'var(--secondary)';
+                infoBox.style.background = 'rgba(16, 185, 129, 0.1)';
+            } else if (type === 'warning') {
+                infoBox.style.borderColor = 'var(--warning)';
+                infoBox.style.background = 'rgba(245, 158, 11, 0.1)';
             } else {
-                appendOutput('⚠️ API Key tidak valid', 'warning');
-                appendOutput('💡 Pastikan key dimulai dengan "sk-oh-"', 'warning');
-                showStatus('info', 'Gunakan Demo Mode untuk percobaan');
+                infoBox.style.borderColor = 'var(--primary)';
+                infoBox.style.background = 'rgba(99, 102, 241, 0.1)';
             }
         }
 
-        function runPresetTask(taskType) {
-            const task = presetTasks[taskType];
-            if (!task) return;
-
-            appendOutput(`\n═══════════════════════════════════════`, 'info');
-            appendOutput(`🚀 Task: ${taskType.toUpperCase()}`, 'info');
-            appendOutput(`═══════════════════════════════════════\n`, 'info');
+        // Add Message
+        function addMessage(role, content) {
+            const avatar = role === 'ai' ? '🤖' : '👤';
             
-            executeTask(task, taskType);
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+            
+            // Convert markdown-like text to HTML
+            const formattedContent = formatContent(content);
+            
+            messageDiv.innerHTML = `
+                <div class="message-avatar">${avatar}</div>
+                <div class="message-content">${formattedContent}</div>
+            `;
+            
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
         }
 
-        function runCustomTask() {
-            const customTask = document.getElementById('customTask').value.trim();
-            if (!customTask) {
-                showStatus('error', 'Masukkan tugas kustom terlebih dahulu!');
-                return;
-            }
-
-            appendOutput(`\n═══════════════════════════════════════`, 'info');
-            appendOutput(`🚀 Custom Task`, 'info');
-            appendOutput(`═══════════════════════════════════════\n`, 'info');
-            
-            executeTask(customTask, 'custom');
+        // Format Content (simple markdown)
+        function formatContent(content) {
+            return content
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/`(.*?)`/g, '<code>$1</code>')
+                .replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
+                .replace(/\n/g, '<br>');
         }
 
-        async function executeTask(task, taskType) {
-            const startTime = Date.now();
-            
-            appendOutput('📤 Task: ' + task.substring(0, 80) + (task.length > 80 ? '...' : ''), 'info');
-            appendOutput('⏳ Memproses...\n', 'warning');
-
-            for (let i = 1; i <= 3; i++) {
-                await new Promise(resolve => setTimeout(resolve, 600));
-                appendOutput(`   ✓ Langkah ${i} selesai`, 'info');
-            }
-
-            appendOutput('\n🤖 AI Response:', 'success');
-            appendOutput('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'success');
-            appendOutput(simulateTaskResponse(task), 'success');
-            appendOutput('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'success');
-
-            const duration = ((Date.now() - startTime) / 1000).toFixed(1);
-            appendOutput(`\n⏱️ Waktu: ${duration} detik`, 'info');
-            appendOutput(`📊 Mode: ${isConnected ? 'LIVE API' : 'DEMO'}`, 'info');
-            appendOutput('═══════════════════════════════════════', 'info');
+        // Show Typing Indicator
+        function showTyping() {
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'message ai';
+            typingDiv.id = 'typingIndicator';
+            typingDiv.innerHTML = `
+                <div class="message-avatar">🤖</div>
+                <div class="message-content">
+                    <div class="typing-indicator">
+                        <span></span><span></span><span></span>
+                    </div>
+                </div>
+            `;
+            chatMessages.appendChild(typingDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
         }
 
-        function simulateTaskResponse(task) {
-            const taskLower = task.toLowerCase();
-            
-            if (taskLower.includes('hello')) {
-                return `File "hello.txt" berhasil dibuat!
+        // Hide Typing Indicator
+        function hideTyping() {
+            const typing = document.getElementById('typingIndicator');
+            if (typing) typing.remove();
+        }
 
-Isi file:
------------
-Hello from AI Task Assistant!
-Tanggal: ${new Date().toLocaleString('id-ID')}
------------
+        // Send Quick Action
+        function sendQuickAction(text) {
+            document.getElementById('messageInput').value = text;
+            sendMessage();
+        }
 
-✓ File disimpan: ./hello.txt`;
+        // Send Message
+        async function sendMessage() {
+            const text = messageInput.value.trim();
+            if (!text || isTyping) return;
+
+            // Clear input
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+
+            // Add user message
+            addMessage('user', text);
+            messageHistory.push({ role: 'user', content: text });
+
+            // Show typing
+            isTyping = true;
+            sendBtn.disabled = true;
+            showTyping();
+
+            try {
+                let response;
+                
+                if (isConnected) {
+                    // Try API call
+                    response = await callOpenHandsAPI(text);
+                } else {
+                    // Simulate response
+                    response = await simulateResponse(text);
+                }
+
+                hideTyping();
+                addMessage('ai', response);
+                messageHistory.push({ role: 'ai', content: response });
+
+            } catch (error) {
+                hideTyping();
+                addMessage('ai', '❌ Maaf, terjadi error: ' + error.message);
             }
+
+            isTyping = false;
+            sendBtn.disabled = false;
+            messageInput.focus();
+        }
+
+        // Call OpenHands API
+        async function callOpenHandsAPI(message) {
+            const apiKey = localStorage.getItem('openhands_api_key');
             
-            if (taskLower.includes('readme')) {
-                return `# Project Name
+            // This is a placeholder - in reality, we would need the correct API endpoint
+            const response = await fetch('https://app.all-hands.dev/api/v1/chat', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    message: message,
+                    history: messageHistory.slice(-10)
+                })
+            });
 
-## Deskripsi
-Project ini menggunakan AI Task Assistant.
+            if (!response.ok) {
+                throw new Error('API call failed');
+            }
 
-## Fitur
-- ✨ AI-powered task automation
-- 📝 Preset tasks ready to use
-- 🎨 Modern interface
+            const data = await response.json();
+            return data.response || data.message || data.content;
+        }
 
-## Instalasi
-\`\`\`bash
-pip install -r requirements.txt
+        // Simulate AI Response
+        async function simulateResponse(message) {
+            // Simulate network delay
+            await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
+
+            const msg = message.toLowerCase();
+
+            // Context-aware responses
+            if (msg.includes('hello') || msg.includes('halo') || msg.includes('hi')) {
+                return `Hai! 👋 Selamat datang!
+
+Saya adalah **AI Assistant** yang siap membantu Anda.
+
+Beberapa hal yang bisa saya bantu:
+- 📝 **Menulis kode** - Python, JavaScript, dll
+- 🔍 **Analisa kode** - Review dan suggestions
+- 📄 **Generate dokumentasi**
+- 🧪 **Buat unit test
+- 🔒 **Security scan**
+
+Apa yang bisa saya bantu hari ini?`;
+            }
+
+            if (msg.includes('what') && msg.includes('openhands') || msg.includes('apa itu openhands')) {
+                return `**OpenHands** adalah platform AI Agent yang membantu mengotomatisasi tugas pemrograman.
+
+Fitur utama:
+- 🤖 **AI Agent** - Bisa executing tasks autonomously
+- 💻 **Code Generation** - Buat kode dari deskripsi
+- 🔧 **Tool Integration** - Browsing, file editing, terminal
+- ☁️ **Cloud Workspace** - Bisa jalan di cloud atau lokal
+
+**API Key**: Anda butuh OpenHands Cloud API key dari https://app.all-hands.dev untuk fitur lengkap.
+
+Demo mode saat ini menggunakan simulasi AI.`;
+            }
+
+            if (msg.includes('help') || msg.includes('bantu') || msg.includes('tolong')) {
+                return `Tentu! Saya siap membantu. 😊
+
+Beberapa contoh yang bisa saya kerjakan:
+
+1. **Buat Kode**
+   \`\`\`
+   "Buatkan Flask app dengan endpoint /api/users"
+   \`\`\`
+
+2. **Analisa Kode**
+   \`\`\`
+   "Analisa project Python saya dan kasih suggestions"
+   \`\`\`
+
+3. **Generate Dokumentasi**
+   \`\`\`
+   "Tambahkan docstrings ke semua function"
+   \`\`\`
+
+4. **Buat Test**
+   \`\`\`
+   "Generate unit tests untuk main.py"
+   \`\`\`
+
+Coba ketik perintah di atas atau tanyakan apa saja!`;
+            }
+
+            if (msg.includes('buat') || msg.includes('create') || msg.includes('bikin')) {
+                if (msg.includes('web') || msg.includes('app') || msg.includes('aplikasi')) {
+                    return `Baik! Saya akan membantu membuat aplikasi web. 🖥️
+
+Untuk memulai, saya perlu tahu:
+
+1. **Framework** - Flask, Django, Express, React?
+2. **Fitur utama** - Apa yang harus dilakukan app?
+3. **Database** - Perlu database? MySQL, PostgreSQL, MongoDB?
+
+Contoh response yang akan saya berikan:
+
+\`\`\`javascript
+// Express.js simple API
+const express = require('express');
+const app = express();
+
+app.get('/api/hello', (req, res) => {
+    res.json({ message: 'Hello World!' });
+});
+
+app.listen(3000, () => {
+    console.log('Server running on port 3000');
+});
 \`\`\`
 
-## Usage
-\`\`\`bash
-python app.py
-\`\`\``;
+Tuliskan detail project yang Anda inginkan!`;
+                }
+                return `Baik! Saya akan membantu membuatnya. ✨
+
+Untuk hasil terbaik, tuliskan:
+- **Bahasa**: Python, JavaScript, dll?
+- **Tujuan**: Apa fungsinya?
+- **Fitur**: Apa yang diperlukan?
+
+Saya akan generate kode sesuai permintaan Anda.`;
             }
 
-            if (taskLower.includes('backup')) {
-                return `✅ Backup selesai!
+            if (msg.includes('code') || msg.includes('kode') || msg.includes('python') || msg.includes('javascript')) {
+                return `Berikut contoh kode untuk berbagai bahasa:
 
-📦 File di-backup:
-- main.py → backup/main.py
-- utils.py → backup/utils.py
+**Python**:
+\`\`\`python
+def greet(name):
+    """Greet someone by name."""
+    return f"Hello, {name}!"
 
-📁 Total: 2 files
-💾 Lokasi: ./backup/`;
+# Usage
+message = greet("World")
+print(message)
+\`\`\`
+
+**JavaScript**:
+\`\`\`javascript
+const greet = (name) => {
+    return \`Hello, \${name}!\`;
+};
+
+console.log(greet("World"));
+\`\`\`
+
+**Go**:
+\`\`\`go
+package main
+
+import "fmt"
+
+func greet(name string) string {
+    return fmt.Sprintf("Hello, %s!", name)
+}
+
+func main() {
+    println(greet("World"))
+}
+\`\`\`
+
+Mau contoh kode untuk apa specifically?`;
             }
 
-            if (taskLower.includes('analyze')) {
-                return `📊 Code Analysis Report
-========================
-📁 Files analyzed: 5 .py files
-📈 Total lines: 1,247
-🔍 Functions: 23 | Classes: 4
+            if (msg.includes('security') || msg.includes('aman') || msg.includes('vulnerability')) {
+                return `🔒 **Security Scan Report**
 
-💡 Suggestions:
-- Add type hints
-- Improve documentation`;
+Berikut common security issues yang perlu diwaspadai:
+
+**1. SQL Injection** ⚠️ HIGH
+\`\`\`
+// BAD
+query = "SELECT * FROM users WHERE id=" + userId
+
+// GOOD
+query = "SELECT * FROM users WHERE id=?"
+\`\`\`
+
+**2. XSS (Cross-Site Scripting)** ⚠️ MEDIUM
+\`\`\`
+// BAD
+element.innerHTML = userInput
+
+// GOOD
+element.textContent = userInput
+\`\`\`
+
+**3. Hardcoded Credentials** ⚠️ MEDIUM
+\`\`\`
+// BAD
+const password = "secret123"
+
+// GOOD - Use environment variables
+const password = process.env.PASSWORD
+\`\`\`
+
+**Best Practices:**
+- ✅ Always validate user input
+- ✅ Use parameterized queries
+- ✅ Store secrets in env vars
+- ✅ Enable HTTPS everywhere
+- ✅ Keep dependencies updated
+
+Mau saya scan file spesifik?`;
             }
 
-            if (taskLower.includes('clean')) {
-                return `🧹 Cleanup Complete!
+            if (msg.includes('test') || msg.includes('unit test') || msg.includes('pytest')) {
+                return `🧪 **Unit Test Examples**
 
-🗑️ Files deleted:
-- ✓ ./*.pyc (12 files)
-- ✓ ./*__pycache__/ (5 dirs)
+**Python with pytest**:
+\`\`\`python
+import pytest
+from myapp import add, subtract
 
-✨ Project is now clean!`;
+def test_add():
+    assert add(2, 3) == 5
+    assert add(-1, 1) == 0
+
+def test_subtract():
+    assert subtract(5, 3) == 2
+    assert subtract(10, 10) == 0
+
+def test_add_strings():
+    with pytest.raises(TypeError):
+        add("hello", "world")
+\`\`\`
+
+**JavaScript with Jest**:
+\`\`\`javascript
+const { add, subtract } = require('./myapp');
+
+test('adds two numbers', () => {
+    expect(add(2, 3)).toBe(5);
+});
+
+test('subtracts two numbers', () => {
+    expect(subtract(5, 3)).toBe(2);
+});
+\`\`\`
+
+**Tips:**
+- Test edge cases
+- Mock external dependencies
+- Keep tests independent
+- Name tests clearly
+
+Kirim kode Anda dan saya akan generate tests!`;
             }
 
-            if (taskLower.includes('test')) {
-                return `🧪 Unit Tests Generated!
+            // Default response
+            return `Saya mengerti! "${message}"
 
-📁 File: test_main.py
-✅ 12 test cases generated
+Dalam mode demo, saya memberikan respons simulasi.
 
-Run with: python -m pytest test_main.py`;
-            }
+**Untuk menggunakan AI sungguhan:**
+1. Dapatkan API key dari https://app.all-hands.dev
+2. Masukkan di kolom API Key di atas
+3. Klik "Connect"
 
-            if (taskLower.includes('docs')) {
-                return `📚 Documentation Generated!
+**Yang bisa saya bantu (dalam mode penuh):**
+- 📝 Write code in any language
+- 🔍 Analyze and review code
+- 🐛 Debug issues
+- 📄 Generate documentation
+- 🧪 Create tests
+- 🔒 Security scanning
 
-✅ 8 functions now have docstrings!
-- main.py: 5 functions documented
-- utils.py: 3 functions documented`;
-            }
-
-            if (taskLower.includes('security')) {
-                return `🔒 Security Scan Report
-=====================
-⚠️ Issues found: 3
-
-1. [MEDIUM] SQL Injection risk
-2. [LOW] Hardcoded credentials
-3. [INFO] Missing HTTPS
-
-✅ Scan completed in 2.3s`;
-            }
-
-            return `[Custom Task Output]
-
-✅ Task "${task.substring(0, 50)}..." diproses!
-
-📋 Ringkasan:
-- Status: ✅ Completed
-- Files: 1-3 created
-
-💡 Ini adalah output simulasi.`;
+Apa yang ingin Anda kerjakan?`;
         }
     </script>
 </body>
