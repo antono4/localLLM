@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🤖 AI Task Assistant - Local LLM</title>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #10b981;
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border: #334155;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+            padding: 3rem 0;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 2rem;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        header p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        /* API Key Section */
+        .api-key-section {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            border: 1px solid var(--border);
+        }
+
+        .api-key-section h2 {
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .api-key-form {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .api-key-form input {
+            flex: 1;
+            min-width: 300px;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+
+        .api-key-form input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-secondary {
+            background: var(--secondary);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #059669;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Status */
+        .status {
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+            display: none;
+        }
+
+        .status.success {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--secondary);
+            display: block;
+        }
+
+        .status.error {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+            display: block;
+        }
+
+        /* Main Content Grid */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Task Section */
+        .task-section {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+        }
+
+        .task-section h2 {
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Preset Tasks */
+        .preset-tasks {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .preset-task {
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .preset-task:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        .preset-task .icon {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .preset-task .name {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .preset-task .desc {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        /* Custom Task */
+        .custom-task {
+            margin-top: 1rem;
+        }
+
+        .custom-task textarea {
+            width: 100%;
+            padding: 1rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            font-size: 1rem;
+            resize: vertical;
+            min-height: 120px;
+            font-family: inherit;
+        }
+
+        .custom-task textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .custom-task .btn {
+            margin-top: 1rem;
+            width: 100%;
+        }
+
+        /* Output Section */
+        .output-section {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+        }
+
+        .output-section h2 {
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .output-content {
+            background: var(--bg-dark);
+            border-radius: 8px;
+            padding: 1rem;
+            min-height: 300px;
+            max-height: 500px;
+            overflow-y: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            border: 1px solid var(--border);
+        }
+
+        .output-content .info {
+            color: var(--primary);
+        }
+
+        .output-content .success {
+            color: var(--secondary);
+        }
+
+        .output-content .error {
+            color: var(--danger);
+        }
+
+        .output-content .warning {
+            color: var(--warning);
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid var(--border);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Features Section */
+        .features {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .features {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            border: 1px solid var(--border);
+        }
+
+        .feature-card .icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .feature-card h3 {
+            margin-bottom: 0.5rem;
+        }
+
+        .feature-card p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 2rem;
+            margin-top: 3rem;
+            border-top: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+
+        footer a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem 1.5rem;
+            display: none;
+            animation: slideIn 0.3s ease;
+        }
+
+        .toast.show {
+            display: block;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <h1>🤖 AI Task Assistant</h1>
+            <p>Automasi Tugas dengan OpenHands Cloud - Local LLM Edition</p>
+        </header>
+
+        <!-- API Key Section -->
+        <section class="api-key-section">
+            <h2>🔑 Konfigurasi API Key</h2>
+            <div class="api-key-form">
+                <input type="password" id="apiKey" placeholder="Masukkan OpenHands Cloud API Key (sk-oh-...)" />
+                <button class="btn btn-primary" onclick="saveApiKey()">Simpan</button>
+                <button class="btn btn-secondary" onclick="testConnection()">Test Koneksi</button>
+            </div>
+            <div id="status" class="status"></div>
+        </section>
+
+        <!-- Main Content -->
+        <div class="main-grid">
+            <!-- Task Input Section -->
+            <section class="task-section">
+                <h2>📝 Pilih Tugas</h2>
+                
+                <!-- Preset Tasks -->
+                <div class="preset-tasks">
+                    <div class="preset-task" onclick="runPresetTask('hello')">
+                        <div class="icon">👋</div>
+                        <div class="name">Hello</div>
+                        <div class="desc">File sapaan sederhana</div>
+                    </div>
+                    <div class="preset-task" onclick="runPresetTask('readme')">
+                        <div class="icon">📄</div>
+                        <div class="name">README</div>
+                        <div class="desc">Generate README.md</div>
+                    </div>
+                    <div class="preset-task" onclick="runPresetTask('backup')">
+                        <div class="icon">💾</div>
+                        <div class="name">Backup</div>
+                        <div class="desc">Backup file Python</div>
+                    </div>
+                    <div class="preset-task" onclick="runPresetTask('analyze')">
+                        <div class="icon">🔍</div>
+                        <div class="name">Analyze</div>
+                        <div class="desc">Analisis struktur code</div>
+                    </div>
+                    <div class="preset-task" onclick="runPresetTask('clean')">
+                        <div class="icon">🧹</div>
+                        <div class="name">Clean</div>
+                        <div class="desc">Hapus file temporary</div>
+                    </div>
+                    <div class="preset-task" onclick="runPresetTask('test')">
+                        <div class="icon">🧪</div>
+                        <div class="name">Test</div>
+                        <div class="desc">Generate unit tests</div>
+                    </div>
+                    <div class="preset-task" onclick="runPresetTask('docs')">
+                        <div class="icon">📚</div>
+                        <div class="name">Docs</div>
+                        <div class="desc">Generate dokumentasi</div>
+                    </div>
+                    <div class="preset-task" onclick="runPresetTask('security')">
+                        <div class="icon">🔒</div>
+                        <div class="name">Security</div>
+                        <div class="desc">Security scan</div>
+                    </div>
+                </div>
+
+                <!-- Custom Task -->
+                <div class="custom-task">
+                    <h3>✨ Tugas Kustom</h3>
+                    <textarea id="customTask" placeholder="Tulis tugas kustom di sini...&#10;Contoh: Buat program CLI untuk manage todo list"></textarea>
+                    <button class="btn btn-primary" onclick="runCustomTask()">Jalankan Tugas Kustom</button>
+                </div>
+            </section>
+
+            <!-- Output Section -->
+            <section class="output-section">
+                <h2>
+                    📊 Output
+                    <button class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.8rem;" onclick="clearOutput()">Clear</button>
+                </h2>
+                <div id="output" class="output-content">
+                    <span class="info">💡 Siap menerima tugas...&#10;&#10;Masukkan API key dan pilih tugas untuk memulai.</span>
+                </div>
+            </section>
+        </div>
+
+        <!-- Features -->
+        <section class="features">
+            <div class="feature-card">
+                <div class="icon">⚡</div>
+                <h3>Cepat</h3>
+                <p>Eksekusi tugas dalam hitungan detik dengan AI</p>
+            </div>
+            <div class="feature-card">
+                <div class="icon">🔒</div>
+                <h3>Aman</h3>
+                <p>Berjalan di sandbox cloud yang aman</p>
+            </div>
+            <div class="feature-card">
+                <div class="icon">🎯</div>
+                <h3>Presisi</h3>
+                <p>Hasil akurat dengan LLM yang powerful</p>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer>
+            <p>Made with ❤️ using <a href="https://app.all-hands.dev" target="_blank">OpenHands Cloud</a></p>
+            <p>Repository: <a href="https://github.com/antono4/localLLM" target="_blank">antono4/localLLM</a></p>
+        </footer>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <script>
+        // Configuration
+        const API_URL = 'https://app.all-hands.dev/api';
+        
+        // Preset tasks configuration
+        const presetTasks = {
+            hello: 'Buat file hello.txt yang berisi "Hello from AI Task Assistant!" dan tanggal saat ini',
+            readme: 'Buat file README.md untuk project ini dengan format yang bagus, berisi deskripsi, instalasi, dan usage',
+            backup: 'Buat backup semua file .py di folder saat ini ke folder backup/',
+            analyze: 'Analisis semua file .py di folder saat ini dan buat laporan tentang struktur code',
+            clean: 'Hapus semua file temporary (.pyc, __pycache__) dan buat .gitignore yang proper',
+            test: 'Buat unit test untuk semua function di file main.py (jika ada)',
+            docs: 'Tambahkan docstring dan comments ke semua function di file main.py (jika ada)',
+            security: 'Scan semua file .py untuk potensi security issues dan buat laporan'
+        };
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedKey = localStorage.getItem('openhands_api_key');
+            if (savedKey) {
+                document.getElementById('apiKey').value = savedKey;
+            }
+        });
+
+        // Save API Key
+        function saveApiKey() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            if (apiKey) {
+                localStorage.setItem('openhands_api_key', apiKey);
+                showToast('✅ API Key berhasil disimpan!');
+                showStatus('success', 'API Key berhasil disimpan!');
+            } else {
+                showStatus('error', 'Masukkan API Key terlebih dahulu!');
+            }
+        }
+
+        // Get API Key
+        function getApiKey() {
+            const apiKey = document.getElementById('apiKey').value.trim() || 
+                           localStorage.getItem('openhands_api_key');
+            if (!apiKey) {
+                showStatus('error', 'API Key belum diset! Masukkan API Key terlebih dahulu.');
+                return null;
+            }
+            return apiKey;
+        }
+
+        // Show Status
+        function showStatus(type, message) {
+            const status = document.getElementById('status');
+            status.className = `status ${type}`;
+            status.textContent = message;
+        }
+
+        // Show Toast
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast show';
+            setTimeout(() => {
+                toast.className = 'toast';
+            }, 3000);
+        }
+
+        // Append Output
+        function appendOutput(text, type = 'info') {
+            const output = document.getElementById('output');
+            const span = document.createElement('span');
+            span.className = type;
+            span.textContent = text + '\n';
+            output.appendChild(span);
+            output.scrollTop = output.scrollHeight;
+        }
+
+        // Clear Output
+        function clearOutput() {
+            document.getElementById('output').innerHTML = 
+                '<span class="info">💡 Output cleared. Siap menerima tugas baru...</span>';
+        }
+
+        // Test Connection
+        async function testConnection() {
+            const apiKey = getApiKey();
+            if (!apiKey) return;
+
+            appendOutput('\n🔄 Menguji koneksi ke OpenHands Cloud...', 'info');
+            
+            try {
+                const response = await fetch(`${API_URL}/status`, {
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    appendOutput(`✅ Koneksi berhasil!`, 'success');
+                    appendOutput(`📋 Status: ${data.status || 'Active'}`, 'info');
+                    showStatus('success', 'Koneksi ke OpenHands Cloud berhasil!');
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                appendOutput(`❌ Gagal: ${error.message}`, 'error');
+                showStatus('error', 'Koneksi gagal! Periksa API Key Anda.');
+            }
+        }
+
+        // Run Preset Task
+        async function runPresetTask(taskType) {
+            const apiKey = getApiKey();
+            if (!apiKey) return;
+
+            const task = presetTasks[taskType];
+            if (!task) {
+                showStatus('error', `Task "${taskType}" tidak ditemukan!`);
+                return;
+            }
+
+            appendOutput(`\n═══════════════════════════════════════`, 'info');
+            appendOutput(`🚀 Menjalankan Task: ${taskType.toUpperCase()}`, 'info');
+            appendOutput(`═══════════════════════════════════════\n`, 'info');
+
+            await executeTask(task);
+        }
+
+        // Run Custom Task
+        async function runCustomTask() {
+            const apiKey = getApiKey();
+            if (!apiKey) return;
+
+            const customTask = document.getElementById('customTask').value.trim();
+            if (!customTask) {
+                showStatus('error', 'Masukkan tugas kustom terlebih dahulu!');
+                return;
+            }
+
+            appendOutput(`\n═══════════════════════════════════════`, 'info');
+            appendOutput(`🚀 Menjalankan Custom Task`, 'info');
+            appendOutput(`═══════════════════════════════════════\n`, 'info');
+
+            await executeTask(customTask);
+        }
+
+        // Execute Task via OpenHands Cloud API
+        async function executeTask(task) {
+            const apiKey = getApiKey();
+            if (!apiKey) return;
+
+            const startTime = Date.now();
+
+            try {
+                appendOutput('⏳ Menghubungkan ke OpenHands Cloud...', 'info');
+
+                // Start conversation
+                const convResponse = await fetch(`${API_URL}/conversations`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: 'claude-sonnet-4-20250514'
+                    })
+                });
+
+                if (!convResponse.ok) {
+                    throw new Error(`Gagal membuat conversation: ${convResponse.status}`);
+                }
+
+                const convData = await convResponse.json();
+                const conversationId = convData.id;
+                
+                appendOutput(`✅ Conversation dibuat: ${conversationId}`, 'success');
+
+                // Send message
+                appendOutput('📤 Mengirim tugas ke AI...', 'info');
+                
+                const msgResponse = await fetch(`${API_URL}/conversations/${conversationId}/messages`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        content: task
+                    })
+                });
+
+                if (!msgResponse.ok) {
+                    throw new Error(`Gagal mengirim pesan: ${msgResponse.status}`);
+                }
+
+                appendOutput('🤖 AI sedang memproses tugas...', 'info');
+
+                // Poll for completion
+                let completed = false;
+                let attempts = 0;
+                const maxAttempts = 60;
+
+                while (!completed && attempts < maxAttempts) {
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    
+                    const statusResponse = await fetch(`${API_URL}/conversations/${conversationId}/status`, {
+                        headers: {
+                            'Authorization': `Bearer ${apiKey}`
+                        }
+                    });
+
+                    if (statusResponse.ok) {
+                        const statusData = await statusResponse.json();
+                        
+                        if (statusData.status === 'completed') {
+                            completed = true;
+                            appendOutput('\n✅ Tugas selesai!', 'success');
+                            
+                            if (statusData.response) {
+                                appendOutput('\n📋 Hasil:\n', 'info');
+                                appendOutput(statusData.response, 'info');
+                            }
+                        } else if (statusData.status === 'failed') {
+                            throw new Error('Tugas gagal diproses');
+                        }
+                    }
+
+                    attempts++;
+                    if (attempts % 5 === 0) {
+                        appendOutput(`⏳ Masih memproses... (${attempts}/${maxAttempts})`, 'warning');
+                    }
+                }
+
+                if (!completed) {
+                    appendOutput('\n⚠️ Proses memakan waktu lebih lama dari biasanya', 'warning');
+                }
+
+            } catch (error) {
+                appendOutput(`\n❌ Error: ${error.message}`, 'error');
+                showStatus('error', `Error: ${error.message}`);
+                
+                // Fallback: show simulated response
+                appendOutput('\n📝 Fallback - Menampilkan contoh output:', 'warning');
+                appendOutput(simulateTaskResponse(task), 'info');
+            }
+
+            const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+            appendOutput(`\n⏱️ Waktu: ${duration} detik`, 'info');
+            appendOutput('═══════════════════════════════════════', 'info');
+        }
+
+        // Simulate Task Response (Fallback)
+        function simulateTaskResponse(task) {
+            const taskLower = task.toLowerCase();
+            
+            if (taskLower.includes('hello') || taskLower.includes('sapaan')) {
+                return `[Simulated Output]
+✅ File hello.txt berhasil dibuat!
+
+Isi file:
+-------------
+Hello from AI Task Assistant!
+Tanggal: ${new Date().toLocaleString('id-ID')}
+-------------
+
+File disimpan di: ./hello.txt`;
+            }
+            
+            if (taskLower.includes('readme')) {
+                return `[Simulated Output]
+✅ File README.md berhasil dibuat!
+
+Struktur:
+-------------
+# Project Name
+
+## Deskripsi
+Project ini menggunakan AI Task Assistant
+
+## Instalasi
+\`\`\`bash
+pip install -r requirements.txt
+\`\`\`
+
+## Usage
+\`\`\`bash
+python app.py
+\`\`\`
+
+## Lisensi
+MIT
+-------------`;
+            }
+
+            return `[Simulated Output]
+✅ Tugas "${task.substring(0, 50)}..." telah diproses!
+
+📋 Ringkasan:
+- Task type: Custom
+- Status: Completed
+- Files created: 1
+- Lines modified: 0
+
+💡 Untuk hasil aktual, pastikan API Key valid dan koneksi internet stabil.`;
+        }
+    </script>
+</body>
+</html>
