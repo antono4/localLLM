@@ -1,14 +1,17 @@
 # 📋 Quick Reference - OpenHands SDK
 
-## 🚀 Start Fast
+## 🚀 Start Fast (OpenHands Cloud - Termudah!)
 
 ```bash
-# Pilihan 1: OpenHands Cloud (dengan cloud sandbox)
+# HANYA butuh OpenHands Cloud API key
 export OPENHANDS_CLOUD_API_KEY='sk-oh-your-cloud-key'
-export LLM_API_KEY='sk-your-openai-anthropic-key'
 python contoh_openhands_cloud.py
+```
 
-# Pilihan 2: Standalone SDK (tanpa cloud)
+## 🔧 Opsi Lain
+
+```bash
+# Standalone SDK (butuh LLM API key sendiri)
 export OPENAI_API_KEY='sk-your-key-here'
 python contoh_openhands.py
 ```

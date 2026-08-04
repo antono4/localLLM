@@ -39,43 +39,13 @@ def main():
     
     try:
         from openhands.workspace.cloud import OpenHandsCloudWorkspace
-        from openhands.sdk import LLM, Conversation
+        from openhands.sdk import Conversation
         from openhands.tools.preset.default import get_default_agent
     except ImportError as e:
         print(f"❌ ERROR importing: {e}")
         print("\n📌 Pastikan install dengan:")
         print("   pip install openhands-workspace")
         sys.exit(1)
-    
-    # LLM API Key - HARUS dari OpenAI atau Anthropic
-    # BUKAN OpenHands Cloud key (sk-oh-...)
-    llm_api_key = os.getenv('LLM_API_KEY') or os.getenv('OPENAI_API_KEY')
-    
-    if not llm_api_key:
-        print("❌ ERROR: LLM_API_KEY tidak ditemukan!")
-        print("\n📌 UNTUK MENJALANKAN AGENT, ANDA MEMBUTUHKAN:")
-        print("   - LLM_API_KEY: OpenAI atau Anthropic API key")
-        print("   - BUKAN OpenHands Cloud API key!")
-        print("\n📝 Contoh:")
-        print("   export LLM_API_KEY='sk-ant-...'  # Anthropic")
-        print("   export LLM_API_KEY='sk-...'       # OpenAI")
-        print()
-        print("💡 Anda bisa mendapatkan API key di:")
-        print("   - OpenAI: platform.openai.com")
-        print("   - Anthropic: console.anthropic.com")
-        sys.exit(1)
-    
-    if llm_api_key.startswith('sk-oh-'):
-        print("❌ ERROR: Anda menggunakan OpenHands Cloud key sebagai LLM key!")
-        print("   LLM_API_KEY harus dari OpenAI atau Anthropic")
-        print("   BUKAN sk-oh-...")
-        sys.exit(1)
-    
-    print(f"🔑 LLM API Key: {llm_api_key[:15]}...")
-    llm = LLM(
-        model=os.getenv('LLM_MODEL', 'claude-sonnet-4-20250514'),
-        api_key=llm_api_key,
-    )
     
     print("📦 Membuat Cloud Workspace...")
     
@@ -93,7 +63,12 @@ def main():
             result = workspace.execute_command("echo 'Hello from OpenHands Cloud!' && date")
             print(f"📨 Command output: {result.stdout.strip()}")
             
-            # Dapatkan agent
+            # Dapatkan LLM dari cloud workspace (managed LLM)
+            print("\n🔑 Menggunakan LLM dari OpenHands Cloud...")
+            llm = workspace.get_llm()
+            print(f"   LLM: {llm.model}")
+            
+            # Dapatkan agent dengan LLM dari cloud
             agent = get_default_agent(llm=llm, cli_mode=True)
             
             # Buat conversation

@@ -159,6 +159,43 @@ conversation.run()
 sandbox.close()  # Bersihkan resources
 ```
 
+## ☁️ Menjalankan dengan OpenHands Cloud (Paling Mudah!)
+
+**HANYA butuh OpenHands Cloud API key** - LLM sudah included!
+
+```python
+import os
+from openhands.workspace.cloud import OpenHandsCloudWorkspace
+from openhands.sdk import Conversation
+from openhands.tools.preset.default import get_default_agent
+
+# Set API key
+api_key = os.getenv('OPENHANDS_CLOUD_API_KEY')
+
+# Connect ke OpenHands Cloud
+with OpenHandsCloudWorkspace(
+    cloud_api_url="https://app.all-hands.dev",
+    cloud_api_key=api_key,
+) as workspace:
+    
+    # Dapatkan LLM dari cloud (managed, tanpa setup tambahan!)
+    llm = workspace.get_llm()
+    
+    # Buat agent
+    agent = get_default_agent(llm=llm, cli_mode=True)
+    
+    # Kirim tugas
+    conversation = Conversation(agent=agent, workspace=workspace)
+    conversation.send_message("Buat file hello.txt dengan sapaan")
+    conversation.run()
+```
+
+Jalankan dengan:
+```bash
+export OPENHANDS_CLOUD_API_KEY='sk-oh-your-key'
+python contoh_openhands_cloud.py
+```
+
 ## 🔐 Konfigurasi Keamanan
 
 ### Menggunakan Confirmation Mode
