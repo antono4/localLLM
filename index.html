@@ -400,12 +400,11 @@
     <header class="header">
         <div class="header-left">
             <h1>🤖 AI Chat Assistant</h1>
-            <span id="statusBadge" class="status-badge">DEMO MODE</span>
+            <span id="statusBadge" class="status-badge">OFFLINE</span>
         </div>
         <div class="api-input">
             <input type="password" id="apiKey" placeholder="OpenHands API Key (sk-oh-...)" />
-            <button class="btn btn-secondary" onclick="testConnection()">Connect</button>
-            <button class="btn btn-demo" onclick="runDemo()">🎮 Demo</button>
+            <button class="btn btn-primary" onclick="connect()">🔗 Connect</button>
         </div>
     </header>
 
@@ -413,8 +412,7 @@
     <div class="chat-container">
         <!-- Info Box -->
         <div class="info-box" id="infoBox">
-            💡 <strong>Selamat datang!</strong> Masukkan API Key OpenHands Cloud atau klik "Demo" untuk test.
-            Aplikasi ini menggunakan AI untuk membantu Anda dengan berbagai tugas.
+            💡 <strong>Masukkan API Key</strong> OpenHands Cloud dan klik "Connect" untuk mulai.
         </div>
 
         <!-- Quick Actions -->
@@ -429,13 +427,13 @@
         <!-- Messages -->
         <div class="chat-messages" id="chatMessages">
             <!-- Welcome -->
-            <div class="welcome">
+            <div class="welcome" id="welcomeMessage">
                 <h2>👋 Hai! Saya AI Assistant</h2>
-                <p>Tanyakan apa saja atau gunakan quick actions di bawah!</p>
+                <p>Masukkan API Key OpenHands Cloud di atas untuk memulai percakapan.</p>
                 <div class="welcome-suggestions">
-                    <span class="suggestion" onclick="sendMessage('Apa itu OpenHands?')">Apa itu OpenHands?</span>
-                    <span class="suggestion" onclick="sendMessage('Bantu saya buat aplikasi web')">Buat aplikasi web</span>
-                    <span class="suggestion" onclick="sendMessage('Jelaskan cara pakai API ini')">Cara pakai API</span>
+                    <span class="suggestion" onclick="showNeedApiKey()">Apa itu OpenHands?</span>
+                    <span class="suggestion" onclick="showNeedApiKey()">Bantu saya buat aplikasi web</span>
+                    <span class="suggestion" onclick="showNeedApiKey()">Cara pakai API</span>
                 </div>
             </div>
         </div>
@@ -468,6 +466,7 @@
         const statusBadge = document.getElementById('statusBadge');
         const quickActions = document.getElementById('quickActions');
         const infoBox = document.getElementById('infoBox');
+        const welcomeMessage = document.getElementById('welcomeMessage');
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
@@ -492,8 +491,8 @@
             }
         }
 
-        // Test Connection
-        function testConnection() {
+        // Connect to OpenHands Cloud
+        function connect() {
             const apiKey = document.getElementById('apiKey').value.trim();
             
             if (!apiKey) {
@@ -515,22 +514,18 @@
             
             showInfo('✅ Berhasil terhubung ke OpenHands Cloud!', 'success');
             
-            // Add system message
+            // Remove welcome message
+            if (welcomeMessage) {
+                welcomeMessage.style.display = 'none';
+            }
+            
+            // Add welcome message from AI
             addMessage('ai', '👋 Selamat datang! Saya siap membantu Anda.\n\nApa yang bisa saya bantu hari ini?');
         }
 
-        // Run Demo
-        function runDemo() {
-            isConnected = false;
-            statusBadge.textContent = 'DEMO MODE';
-            statusBadge.classList.remove('connected');
-            quickActions.style.display = 'flex';
-            
-            showInfo('🎮 Demo Mode aktif - menggunakan AI simulasi', 'info');
-            
-            // Clear and add welcome
-            chatMessages.innerHTML = '';
-            addMessage('ai', '🎮 **Demo Mode Aktif!**\n\nSaya dalam mode demo. Ketik pesan dan saya akan merespons dengan simulasi.\n\nCoba tanyakan sesuatu!');
+        // Show need API key message
+        function showNeedApiKey() {
+            showInfo('⚠️ Masukkan API Key terlebih dahulu untuk menggunakan fitur ini!', 'warning');
         }
 
         // Show Info Message
@@ -610,6 +605,11 @@
         async function sendMessage() {
             const text = messageInput.value.trim();
             if (!text || isTyping) return;
+            
+            if (!isConnected) {
+                showInfo('⚠️ Hubungkan ke OpenHands Cloud terlebih dahulu!', 'warning');
+                return;
+            }
 
             // Clear input
             messageInput.value = '';
@@ -627,13 +627,8 @@
             try {
                 let response;
                 
-                if (isConnected) {
-                    // Try API call - will fallback to demo if fails
-                    response = await callOpenHandsAPI(text);
-                } else {
-                    // Simulate response
-                    response = await simulateResponse(text);
-                }
+                // Try API call
+                response = await callOpenHandsAPI(text);
 
                 hideTyping();
                 addMessage('ai', response);
@@ -641,9 +636,7 @@
 
             } catch (error) {
                 hideTyping();
-                // Don't show error to user, just use demo response
-                const demoResponse = await simulateResponse(text);
-                addMessage('ai', demoResponse);
+                addMessage('ai', '❌ Maaf, terjadi error saat memproses request: ' + error.message + '\n\nSilakan coba lagi.');
             }
 
             isTyping = false;
@@ -669,275 +662,38 @@
                 });
 
                 if (!response.ok) {
-                    // Fallback to demo if API fails
-                    console.log('API call failed, using demo mode');
-                    return await simulateResponse(message);
+                    throw new Error('API returned status: ' + response.status);
                 }
 
                 const data = await response.json();
                 
-                // If we got a conversation ID, use demo response for now
-                // (Full API integration would continue here)
+                // If we got a conversation ID, send message
                 if (data.id) {
-                    return await simulateResponse(message);
+                    // Send message to conversation
+                    const msgResponse = await fetch(`https://app.all-hands.dev/api/v1/conversations/${data.id}/messages`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${apiKey}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            content: message
+                        })
+                    });
+                    
+                    if (!msgResponse.ok) {
+                        throw new Error('Failed to send message');
+                    }
+                    
+                    const msgData = await msgResponse.json();
+                    return msgData.response || msgData.content || 'Response received';
                 }
 
-                return await simulateResponse(message);
+                throw new Error('No conversation ID returned');
+                
             } catch (error) {
-                // Fallback to demo mode on any error
-                console.log('API error, using demo mode:', error.message);
-                return await simulateResponse(message);
+                throw new Error(error.message);
             }
-        }
-
-        // Simulate AI Response
-        async function simulateResponse(message) {
-            // Simulate network delay
-            await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
-
-            const msg = message.toLowerCase();
-
-            // Context-aware responses
-            if (msg.includes('hello') || msg.includes('halo') || msg.includes('hi')) {
-                return `Hai! 👋 Selamat datang!
-
-Saya adalah **AI Assistant** yang siap membantu Anda.
-
-Beberapa hal yang bisa saya bantu:
-- 📝 **Menulis kode** - Python, JavaScript, dll
-- 🔍 **Analisa kode** - Review dan suggestions
-- 📄 **Generate dokumentasi**
-- 🧪 **Buat unit test
-- 🔒 **Security scan**
-
-Apa yang bisa saya bantu hari ini?`;
-            }
-
-            if (msg.includes('what') && msg.includes('openhands') || msg.includes('apa itu openhands')) {
-                return `**OpenHands** adalah platform AI Agent yang membantu mengotomatisasi tugas pemrograman.
-
-Fitur utama:
-- 🤖 **AI Agent** - Bisa executing tasks autonomously
-- 💻 **Code Generation** - Buat kode dari deskripsi
-- 🔧 **Tool Integration** - Browsing, file editing, terminal
-- ☁️ **Cloud Workspace** - Bisa jalan di cloud atau lokal
-
-**API Key**: Anda butuh OpenHands Cloud API key dari https://app.all-hands.dev untuk fitur lengkap.
-
-Demo mode saat ini menggunakan simulasi AI.`;
-            }
-
-            if (msg.includes('help') || msg.includes('bantu') || msg.includes('tolong')) {
-                return `Tentu! Saya siap membantu. 😊
-
-Beberapa contoh yang bisa saya kerjakan:
-
-1. **Buat Kode**
-   \`\`\`
-   "Buatkan Flask app dengan endpoint /api/users"
-   \`\`\`
-
-2. **Analisa Kode**
-   \`\`\`
-   "Analisa project Python saya dan kasih suggestions"
-   \`\`\`
-
-3. **Generate Dokumentasi**
-   \`\`\`
-   "Tambahkan docstrings ke semua function"
-   \`\`\`
-
-4. **Buat Test**
-   \`\`\`
-   "Generate unit tests untuk main.py"
-   \`\`\`
-
-Coba ketik perintah di atas atau tanyakan apa saja!`;
-            }
-
-            if (msg.includes('buat') || msg.includes('create') || msg.includes('bikin')) {
-                if (msg.includes('web') || msg.includes('app') || msg.includes('aplikasi')) {
-                    return `Baik! Saya akan membantu membuat aplikasi web. 🖥️
-
-Untuk memulai, saya perlu tahu:
-
-1. **Framework** - Flask, Django, Express, React?
-2. **Fitur utama** - Apa yang harus dilakukan app?
-3. **Database** - Perlu database? MySQL, PostgreSQL, MongoDB?
-
-Contoh response yang akan saya berikan:
-
-\`\`\`javascript
-// Express.js simple API
-const express = require('express');
-const app = express();
-
-app.get('/api/hello', (req, res) => {
-    res.json({ message: 'Hello World!' });
-});
-
-app.listen(3000, () => {
-    console.log('Server running on port 3000');
-});
-\`\`\`
-
-Tuliskan detail project yang Anda inginkan!`;
-                }
-                return `Baik! Saya akan membantu membuatnya. ✨
-
-Untuk hasil terbaik, tuliskan:
-- **Bahasa**: Python, JavaScript, dll?
-- **Tujuan**: Apa fungsinya?
-- **Fitur**: Apa yang diperlukan?
-
-Saya akan generate kode sesuai permintaan Anda.`;
-            }
-
-            if (msg.includes('code') || msg.includes('kode') || msg.includes('python') || msg.includes('javascript')) {
-                return `Berikut contoh kode untuk berbagai bahasa:
-
-**Python**:
-\`\`\`python
-def greet(name):
-    """Greet someone by name."""
-    return f"Hello, {name}!"
-
-# Usage
-message = greet("World")
-print(message)
-\`\`\`
-
-**JavaScript**:
-\`\`\`javascript
-const greet = (name) => {
-    return \`Hello, \${name}!\`;
-};
-
-console.log(greet("World"));
-\`\`\`
-
-**Go**:
-\`\`\`go
-package main
-
-import "fmt"
-
-func greet(name string) string {
-    return fmt.Sprintf("Hello, %s!", name)
-}
-
-func main() {
-    println(greet("World"))
-}
-\`\`\`
-
-Mau contoh kode untuk apa specifically?`;
-            }
-
-            if (msg.includes('security') || msg.includes('aman') || msg.includes('vulnerability')) {
-                return `🔒 **Security Scan Report**
-
-Berikut common security issues yang perlu diwaspadai:
-
-**1. SQL Injection** ⚠️ HIGH
-\`\`\`
-// BAD
-query = "SELECT * FROM users WHERE id=" + userId
-
-// GOOD
-query = "SELECT * FROM users WHERE id=?"
-\`\`\`
-
-**2. XSS (Cross-Site Scripting)** ⚠️ MEDIUM
-\`\`\`
-// BAD
-element.innerHTML = userInput
-
-// GOOD
-element.textContent = userInput
-\`\`\`
-
-**3. Hardcoded Credentials** ⚠️ MEDIUM
-\`\`\`
-// BAD
-const password = "secret123"
-
-// GOOD - Use environment variables
-const password = process.env.PASSWORD
-\`\`\`
-
-**Best Practices:**
-- ✅ Always validate user input
-- ✅ Use parameterized queries
-- ✅ Store secrets in env vars
-- ✅ Enable HTTPS everywhere
-- ✅ Keep dependencies updated
-
-Mau saya scan file spesifik?`;
-            }
-
-            if (msg.includes('test') || msg.includes('unit test') || msg.includes('pytest')) {
-                return `🧪 **Unit Test Examples**
-
-**Python with pytest**:
-\`\`\`python
-import pytest
-from myapp import add, subtract
-
-def test_add():
-    assert add(2, 3) == 5
-    assert add(-1, 1) == 0
-
-def test_subtract():
-    assert subtract(5, 3) == 2
-    assert subtract(10, 10) == 0
-
-def test_add_strings():
-    with pytest.raises(TypeError):
-        add("hello", "world")
-\`\`\`
-
-**JavaScript with Jest**:
-\`\`\`javascript
-const { add, subtract } = require('./myapp');
-
-test('adds two numbers', () => {
-    expect(add(2, 3)).toBe(5);
-});
-
-test('subtracts two numbers', () => {
-    expect(subtract(5, 3)).toBe(2);
-});
-\`\`\`
-
-**Tips:**
-- Test edge cases
-- Mock external dependencies
-- Keep tests independent
-- Name tests clearly
-
-Kirim kode Anda dan saya akan generate tests!`;
-            }
-
-            // Default response
-            return `Saya mengerti! "${message}"
-
-Dalam mode demo, saya memberikan respons simulasi.
-
-**Untuk menggunakan AI sungguhan:**
-1. Dapatkan API key dari https://app.all-hands.dev
-2. Masukkan di kolom API Key di atas
-3. Klik "Connect"
-
-**Yang bisa saya bantu (dalam mode penuh):**
-- 📝 Write code in any language
-- 🔍 Analyze and review code
-- 🐛 Debug issues
-- 📄 Generate documentation
-- 🧪 Create tests
-- 🔒 Security scanning
-
-Apa yang ingin Anda kerjakan?`;
         }
     </script>
 </body>
