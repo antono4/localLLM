@@ -37,15 +37,45 @@ def main():
     # Suppress banner
     os.environ['OPENHANDS_SUPPRESS_BANNER'] = '1'
     
+    # Import dengan fallback untuk kompatibilitas versi
+    OpenHandsCloudWorkspace = None
+    get_default_agent = None
+    
+    # Coba import dari openhands.workspace (standalone package)
     try:
         from openhands.workspace.cloud import OpenHandsCloudWorkspace
-        from openhands.sdk import Conversation
+        print("✓ Using openhands.workspace package")
+    except ImportError:
+        # Fallback: coba dari openhands.sdk.workspace
+        try:
+            from openhands.sdk.workspace.cloud import OpenHandsCloudWorkspace
+            print("✓ Using openhands.sdk.workspace (cloud submodule)")
+        except ImportError:
+            pass
+    
+    # Coba import get_default_agent
+    try:
         from openhands.tools.preset.default import get_default_agent
-    except ImportError as e:
-        print(f"❌ ERROR importing: {e}")
+    except ImportError:
+        try:
+            from openhands.sdk.agent import get_default_agent
+        except ImportError:
+            pass
+    
+    # Check imports
+    if OpenHandsCloudWorkspace is None:
+        print("❌ ERROR: Tidak bisa import OpenHandsCloudWorkspace")
         print("\n📌 Pastikan install dengan:")
-        print("   pip install openhands-workspace")
+        print("   pip install openhands-sdk openhands-tools openhands-workspace")
+        print("\n📌 Atau upgrade semua packages:")
+        print("   pip install --upgrade openhands-sdk openhands-tools openhands-workspace")
         sys.exit(1)
+    
+    if get_default_agent is None:
+        print("⚠️  WARNING: Tidak bisa import get_default_agent")
+        print("   Akan coba menggunakan Agent langsung...")
+        from openhands.sdk import Agent, LLM
+        get_default_agent = lambda llm, cli_mode: Agent(llm=llm)
     
     print("📦 Membuat Cloud Workspace...")
     
